@@ -5,9 +5,20 @@
 
 #include <iostream>
 #include <stdexcept>
-#include <cstdlib>
 #include <vector>
+#include <cstring>
+#include <cstdlib>
+#include <optional>
 
+struct QueueFamilyIndices
+{
+    std::optional<uint32_t> GraphicsFamily;
+
+    bool IsComplete()
+    {
+        return GraphicsFamily.has_value();
+    }
+};
 
 class HelloTriangleApplication
 {
@@ -15,19 +26,21 @@ public:
 	void Run();
 
 private:
+    void MainLoop();
+    void Cleanup();
+
     void InitWindow();
 
     void InitVulkan();
     void CreateInstance();
     void PopulateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
     void SetupDebugMessenger();
-    bool CheckValidationLayerSupport();
-    std::vector<const char*> GetRequiredExtensions();
     void PickPhysicalDevice();
+    bool IsDeviceSuitable(VkPhysicalDevice device);
+    QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice device);
 
-    void MainLoop();
-
-    void Cleanup();
+    std::vector<const char*> GetRequiredExtensions();
+    bool CheckValidationLayerSupport();
 
 private:
     GLFWwindow* m_Window;
@@ -36,5 +49,6 @@ private:
 
     VkInstance m_VKInstance;
     VkDebugUtilsMessengerEXT m_VKDebugMessenger;
+    VkPhysicalDevice m_VKPhysicalDevice = VK_NULL_HANDLE;
 
 };

@@ -40,6 +40,26 @@ void HelloTriangleApplication::Run()
     Cleanup();
 }
 
+void HelloTriangleApplication::MainLoop()
+{
+    while (!glfwWindowShouldClose(m_Window))
+    {
+
+        glfwPollEvents;
+    }
+}
+
+void HelloTriangleApplication::Cleanup()
+{
+    if (enableValidationLayers)
+        DestroyDebugUtilsMessengerEXT(m_VKInstance, m_VKDebugMessenger, nullptr);
+
+    vkDestroyInstance(m_VKInstance, nullptr);
+    glfwDestroyWindow(m_Window);
+
+    glfwTerminate();
+}
+
 void HelloTriangleApplication::InitWindow()
 {
     glfwInit();
@@ -96,7 +116,7 @@ void HelloTriangleApplication::CreateInstance()
     }
 
     if (vkCreateInstance(&createInfo, nullptr, &m_VKInstance) != VK_SUCCESS)
-        throw std::runtime_error("failed to create instance!");
+        throw std::runtime_error("Failed to create instance!");
 }
 
 void HelloTriangleApplication::PopulateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo)
@@ -117,7 +137,76 @@ void HelloTriangleApplication::SetupDebugMessenger()
     PopulateDebugMessengerCreateInfo(createInfo);
 
     if (CreateDebugUtilsMessengerEXT(m_VKInstance, &createInfo, nullptr, &m_VKDebugMessenger) != VK_SUCCESS)
-        throw std::runtime_error("failed to set up debug messenger!");
+        throw std::runtime_error("Failed to set up debug messenger!");
+}
+
+void HelloTriangleApplication::PickPhysicalDevice()
+{
+    uint32_t deviceCount = 0;
+    vkEnumeratePhysicalDevices(m_VKInstance, &deviceCount, nullptr);
+
+    if (deviceCount == 0)
+        throw std::runtime_error("Failed to find GPUs with Vulkan support!");
+
+    std::vector<VkPhysicalDevice> devices(deviceCount);
+    vkEnumeratePhysicalDevices(m_VKInstance, &deviceCount, devices.data());
+
+    for (const auto& device : devices)
+    {
+        if (IsDeviceSuitable(device))
+        {
+            m_VKPhysicalDevice = device;
+            break;
+        }
+    }
+
+    if (m_VKPhysicalDevice == VK_NULL_HANDLE)
+        throw std::runtime_error("Failed to find a suitable GPU!");
+}
+
+bool HelloTriangleApplication::IsDeviceSuitable(VkPhysicalDevice device)
+{
+    QueueFamilyIndices indices = FindQueueFamilies(device);
+    return indices.IsComplete();
+}
+
+QueueFamilyIndices HelloTriangleApplication::FindQueueFamilies(VkPhysicalDevice device)
+{
+    QueueFamilyIndices indices;
+
+    uint32_t queueFamilyCount = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+
+    std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+
+    int i = 0;
+    for (const auto& queueFamily : queueFamilies)
+    {
+        if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+            indices.GraphicsFamily = i;
+
+        if (indices.IsComplete())
+            break;
+
+        i++;
+    }
+
+    return indices;
+}
+
+std::vector<const char*> HelloTriangleApplication::GetRequiredExtensions()
+{
+    uint32_t glfwExtensionCount = 0;
+    const char** glfwExtensions;
+    glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+
+    std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+
+    if (enableValidationLayers)
+        extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+
+    return extensions;
 }
 
 bool HelloTriangleApplication::CheckValidationLayerSupport()
@@ -146,45 +235,6 @@ bool HelloTriangleApplication::CheckValidationLayerSupport()
     }
 
     return true;
-}
-
-std::vector<const char*> HelloTriangleApplication::GetRequiredExtensions()
-{
-    uint32_t glfwExtensionCount = 0;
-    const char** glfwExtensions;
-    glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-
-    std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
-
-    if (enableValidationLayers)
-        extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-
-    return extensions;
-}
-
-void HelloTriangleApplication::PickPhysicalDevice()
-{
-
-}
-
-void HelloTriangleApplication::MainLoop()
-{
-    while (!glfwWindowShouldClose(m_Window))
-    {
-
-        glfwPollEvents;
-    }
-}
-
-void HelloTriangleApplication::Cleanup()
-{
-    if (enableValidationLayers)
-        DestroyDebugUtilsMessengerEXT(m_VKInstance, m_VKDebugMessenger, nullptr);
-
-    vkDestroyInstance(m_VKInstance, nullptr);
-    glfwDestroyWindow(m_Window);
-
-    glfwTerminate();
 }
 
 int main()
