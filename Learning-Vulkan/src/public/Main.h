@@ -39,6 +39,8 @@ private:
     bool IsDeviceSuitable(VkPhysicalDevice device);
     QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice device);
 
+    void CreateLogicalDevice();
+
     std::vector<const char*> GetRequiredExtensions();
     bool CheckValidationLayerSupport();
 
@@ -50,5 +52,6 @@ private:
     VkInstance m_VKInstance;
     VkDebugUtilsMessengerEXT m_VKDebugMessenger;
     VkPhysicalDevice m_VKPhysicalDevice = VK_NULL_HANDLE;
-
+    VkDevice m_VKDevice;
+    VkQueue m_GraphicsQueue;
 };
