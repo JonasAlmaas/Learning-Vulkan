@@ -92,9 +92,6 @@
   <ItemGroup>
     <ClCompile Include="src\private\main.cpp" />
   </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="vendor\GLFW\include\GLFW\glfw3.h" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
