@@ -1,7 +1,10 @@
 #pragma once
 
+#define VK_USE_PLATFORM_WIN32_KHR
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3native.h>
 
 #include <iostream>
 #include <stdexcept>
@@ -10,13 +13,15 @@
 #include <cstdlib>
 #include <optional>
 
+
 struct QueueFamilyIndices
 {
     std::optional<uint32_t> GraphicsFamily;
+    std::optional<uint32_t> PresentFamily;
 
     bool IsComplete()
     {
-        return GraphicsFamily.has_value();
+        return GraphicsFamily.has_value() && PresentFamily.has_value();
     }
 };
 
@@ -33,8 +38,12 @@ private:
 
     void InitVulkan();
     void CreateInstance();
+
     void PopulateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
     void SetupDebugMessenger();
+
+    void CreateSurface();
+    
     void PickPhysicalDevice();
     bool IsDeviceSuitable(VkPhysicalDevice device);
     QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice device);
@@ -53,5 +62,9 @@ private:
     VkDebugUtilsMessengerEXT m_VKDebugMessenger;
     VkPhysicalDevice m_VKPhysicalDevice = VK_NULL_HANDLE;
     VkDevice m_VKDevice;
-    VkQueue m_GraphicsQueue;
+    VkQueue m_VKGraphicsQueue;
+
+    VkSurfaceKHR m_VKSurface;
+    VkQueue m_VKPresentQueue;
+
 };
