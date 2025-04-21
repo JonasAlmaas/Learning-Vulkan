@@ -34,11 +34,12 @@ private:
 	uint32_t window_width, window_height;
 	struct GLFWwindow *window = nullptr;
 
-	VkInstance vk_instance = nullptr;
-	VkDebugUtilsMessengerEXT vk_debug_messenger = nullptr;
-	VkSurfaceKHR vk_surface = nullptr;
-	VkPhysicalDevice vk_physical_device = nullptr;
-	VkDevice vk_device = nullptr;
-	VkQueue vk_graphics_queue = nullptr;
-	VkQueue vk_present_queue = nullptr;
+	
+	VkInstance vk_instance = VK_NULL_HANDLE;
+	VkDebugUtilsMessengerEXT vk_debug_messenger = VK_NULL_HANDLE;
+	VkSurfaceKHR vk_surface = VK_NULL_HANDLE;
+	VkPhysicalDevice vk_physical_device = VK_NULL_HANDLE;
+	VkDevice vk_device = VK_NULL_HANDLE;
+	VkQueue vk_graphics_queue = VK_NULL_HANDLE;
+	VkQueue vk_present_queue = VK_NULL_HANDLE;
 };
