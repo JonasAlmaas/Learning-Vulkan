@@ -58,7 +58,7 @@ static VkResult create_debug_utils_messenger_ext(
 	VkDebugUtilsMessengerEXT *debug_messenger)
 {
 	auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-	return func != nullptr
+	return func
 		? func(instance, create_info, allocator, debug_messenger)
 		: VK_ERROR_EXTENSION_NOT_PRESENT;
 }
@@ -69,7 +69,7 @@ static void destroy_debug_utils_messenger_ext(
 	const VkAllocationCallbacks *allocator)
 {
 	auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-	if (func != nullptr) {
+	if (func) {
 		func(instance, debug_messenger, allocator);
 	}
 }
@@ -234,6 +234,7 @@ void vk_app::window_init()
 void vk_app::window_deinit()
 {
 	glfwDestroyWindow(this->window);
+	this->window = nullptr;
 	glfwTerminate();
 }
 
@@ -249,13 +250,18 @@ void vk_app::vulkan_init()
 void vk_app::vulkan_deinit()
 {
 	vkDestroyDevice(this->vk_device, nullptr);
+	this->vk_device = nullptr;
 
 	if (ENABLE_VALIDATION_LAYERS) {
 		destroy_debug_utils_messenger_ext(this->vk_instance, this->vk_debug_messenger, nullptr);
+		this->vk_debug_messenger = nullptr;
 	}
 
 	vkDestroySurfaceKHR(this->vk_instance, this->vk_surface, nullptr);
+	this->vk_surface = nullptr;
+
 	vkDestroyInstance(this->vk_instance, nullptr);
+	this->vk_instance = nullptr;
 }
 
 void vk_app::create_instance()
@@ -264,21 +270,21 @@ void vk_app::create_instance()
 		throw std::runtime_error("Validation layer requested, but not available");
 	}
 
-	VkApplicationInfo app_info = {};
-	app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-	app_info.pApplicationName = "Learning Vulkan";
-	app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-	app_info.pEngineName = "No Engine";
-	app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-	app_info.apiVersion = VK_API_VERSION_1_0;
-
-	VkInstanceCreateInfo create_info = {};
-	create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-	create_info.pApplicationInfo = &app_info;
-
 	auto extensions = get_required_extensions();
-	create_info.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
-	create_info.ppEnabledExtensionNames = extensions.data();
+
+	VkApplicationInfo app_info = {
+		.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+		.pApplicationName = "Learning Vulkan",
+		.applicationVersion = VK_MAKE_VERSION(1, 0, 0),
+		.pEngineName = "No Engine",
+		.engineVersion = VK_MAKE_VERSION(1, 0, 0),
+		.apiVersion = VK_API_VERSION_1_0};
+
+	VkInstanceCreateInfo create_info = {
+		.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+		.pApplicationInfo = &app_info,
+		.enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
+		.ppEnabledExtensionNames = extensions.data()};
 
 	VkDebugUtilsMessengerCreateInfoEXT debug_create_info = {};
 	if (ENABLE_VALIDATION_LAYERS) {
@@ -292,7 +298,7 @@ void vk_app::create_instance()
 		create_info.pNext = nullptr;
 	}
 
-	if (vkCreateInstance(&create_info, nullptr, &vk_instance) != VK_SUCCESS) {
+	if (vkCreateInstance(&create_info, nullptr, &this->vk_instance) != VK_SUCCESS) {
 		throw std::runtime_error("Failed to create instance");
 	}
 }
@@ -353,7 +359,6 @@ void vk_app::pick_physical_device()
 void vk_app::create_logical_device()
 {
 	auto indices = find_queue_families(this->vk_physical_device, this->vk_surface);
-
 	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
 	std::set<uint32_t> unique_queue_families = { indices.graphics_family.value(), indices.present_family.value() };
 
