@@ -22,12 +22,6 @@ private:
 	void vulkan_init();
 	void vulkan_deinit();
 
-	void create_instance();
-	void setup_debug_messenger();
-	void create_surface();
-	void pick_physical_device();
-	void create_logical_device();
-
 private:
 	bool running;
 

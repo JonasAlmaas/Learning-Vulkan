@@ -152,45 +152,6 @@ struct queue_family_indices
 	}
 };
 
-static queue_family_indices find_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface)
-{
-	queue_family_indices indices;
-
-	uint32_t queueFamilyCount = 0;
-	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
-
-	std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
-
-	int i = 0;
-	for (const auto &queueFamily : queueFamilies) {
-		if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-			indices.graphics_family = i;
-		}
-
-		VkBool32 presentSupport = false;
-		vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
-
-		if (presentSupport) {
-			indices.present_family = i;
-		}
-
-		if (indices.is_complete()) {
-			break;
-		}
-
-		++i;
-	}
-
-	return indices;
-}
-
-static bool is_device_suitable(VkPhysicalDevice device, VkSurfaceKHR surface)
-{
-	queue_family_indices indices = find_queue_families(device, surface);
-	return indices.is_complete();
-}
-
 void vk_app::run()
 {
 	window_init();
@@ -239,29 +200,26 @@ void vk_app::window_init()
 	}
 
 	glfwSetKeyCallback(this->window, [](GLFWwindow *window, int key_code, int scancode, int action, int mods) {
-
-	});
-	/*glfwSetKeyCallback(this->window, [](GLFWwindow *window, int key_code, int scancode, int action, int mods) {
-		WindowData *data = (WindowData*)glfwGetWindowUserPointer(window);
+		/*WindowData *data = (WindowData *)glfwGetWindowUserPointer(window);*/
 
 		switch (action) {
 		case GLFW_PRESS: {
-			key_pressed_event e((elm::key)key_code, 0);
-			data->event_callback(e);
+			/*key_pressed_event e((elm::key)key_code, 0);
+			data->event_callback(e);*/
 			break;
 		}
 		case GLFW_RELEASE: {
-			key_released_event e((elm::key)key_code);
-			data->event_callback(e);
+			/*key_released_event e((elm::key)key_code);
+			data->event_callback(e);*/
 			break;
 		}
 		case GLFW_REPEAT: {
-			key_pressed_event e((elm::key)key_code, 1);
-			data->event_callback(e);
+			/*key_pressed_event e((elm::key)key_code, 1);
+			data->event_callback(e);*/
 			break;
 		}
 		}
-	});*/
+	});
 }
 
 void vk_app::window_deinit()
@@ -271,33 +229,7 @@ void vk_app::window_deinit()
 	glfwTerminate();
 }
 
-void vk_app::vulkan_init()
-{
-	create_instance();
-	setup_debug_messenger();
-	create_surface();
-	pick_physical_device();
-	create_logical_device();
-}
-
-void vk_app::vulkan_deinit()
-{
-	vkDestroyDevice(this->vk_device, nullptr);
-	this->vk_device = nullptr;
-
-	if (ENABLE_VALIDATION_LAYERS) {
-		destroy_debug_utils_messenger_ext(this->vk_instance, this->vk_debug_messenger, nullptr);
-		this->vk_debug_messenger = nullptr;
-	}
-
-	vkDestroySurfaceKHR(this->vk_instance, this->vk_surface, nullptr);
-	this->vk_surface = nullptr;
-
-	vkDestroyInstance(this->vk_instance, nullptr);
-	this->vk_instance = nullptr;
-}
-
-void vk_app::create_instance()
+static VkInstance create_instance()
 {
 	if (ENABLE_VALIDATION_LAYERS && !check_validation_layer_support()) {
 		throw std::runtime_error("Validation layer requested, but not available");
@@ -331,67 +263,121 @@ void vk_app::create_instance()
 		create_info.pNext = nullptr;
 	}
 
-	if (vkCreateInstance(&create_info, nullptr, &this->vk_instance) != VK_SUCCESS) {
+	VkInstance instance;
+	if (vkCreateInstance(&create_info, nullptr, &instance) != VK_SUCCESS) {
 		throw std::runtime_error("Failed to create instance");
 	}
+
+	return instance;
 }
 
-void vk_app::setup_debug_messenger()
+static VkDebugUtilsMessengerEXT setup_debug_messenger(VkInstance instance)
 {
 	if (!ENABLE_VALIDATION_LAYERS) {
-		return;
+		return VK_NULL_HANDLE;
 	}
 
 	VkDebugUtilsMessengerCreateInfoEXT create_info;
 	populate_debug_messenger_create_info(create_info);
 
+	VkDebugUtilsMessengerEXT messenger;
 	if (create_debug_utils_messenger_ext(
-			this->vk_instance,
+			instance,
 			&create_info,
 			nullptr,
-			&this->vk_debug_messenger) != VK_SUCCESS) {
+			&messenger) != VK_SUCCESS) {
 		throw std::runtime_error("Failed to set up debug messenger");
 	}
+
+	return messenger;
 }
 
-void vk_app::create_surface()
+static VkSurfaceKHR create_surface(VkInstance instance, GLFWwindow *window)
 {
+	VkSurfaceKHR surface;
 	if (glfwCreateWindowSurface(
-			this->vk_instance,
-			this->window,
+			instance,
+			window,
 			nullptr,
-			&this->vk_surface) != VK_SUCCESS) {
+			&surface) != VK_SUCCESS) {
 		throw std::runtime_error("Failed to create window surface");
 	}
+	return surface;
 }
 
-void vk_app::pick_physical_device()
+static queue_family_indices find_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface)
+{
+	queue_family_indices indices;
+
+	uint32_t queueFamilyCount = 0;
+	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+
+	std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+
+	int i = 0;
+	for (const auto &queueFamily : queueFamilies) {
+		if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+			indices.graphics_family = i;
+		}
+
+		VkBool32 presentSupport = false;
+		vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
+
+		if (presentSupport) {
+			indices.present_family = i;
+		}
+
+		if (indices.is_complete()) {
+			break;
+		}
+
+		++i;
+	}
+
+	return indices;
+}
+
+static bool is_device_suitable(VkPhysicalDevice device, VkSurfaceKHR surface)
+{
+	queue_family_indices indices = find_queue_families(device, surface);
+	return indices.is_complete();
+}
+
+static VkPhysicalDevice pick_physical_device(VkInstance instance, VkSurfaceKHR surface)
 {
 	uint32_t device_count = 0;
-	vkEnumeratePhysicalDevices(this->vk_instance, &device_count, nullptr);
+	vkEnumeratePhysicalDevices(instance, &device_count, nullptr);
 
 	if (device_count == 0) {
 		throw std::runtime_error("Failed to find GPUs with Vulkan support");
 	}
 
 	std::vector<VkPhysicalDevice> devices(device_count);
-	vkEnumeratePhysicalDevices(this->vk_instance, &device_count, devices.data());
+	vkEnumeratePhysicalDevices(instance, &device_count, devices.data());
 
+	VkPhysicalDevice ret = VK_NULL_HANDLE;
 	for (const auto &device : devices) {
-		if (is_device_suitable(device, this->vk_surface)) {
-			this->vk_physical_device = device;
+		if (is_device_suitable(device, surface)) {
+			ret = device;
 			break;
 		}
 	}
 
-	if (this->vk_physical_device == VK_NULL_HANDLE) {
+	if (ret == VK_NULL_HANDLE) {
 		throw std::runtime_error("Failed to find a suitable GPU");
 	}
+
+	return ret;
 }
 
-void vk_app::create_logical_device()
+static VkDevice create_logical_device(
+	VkSurfaceKHR surface,
+	VkPhysicalDevice physical_device,
+	VkQueue *graphics_queue,
+	VkQueue *present_queue)
 {
-	auto indices = find_queue_families(this->vk_physical_device, this->vk_surface);
+	auto indices = find_queue_families(physical_device, surface);
 	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
 	std::set<uint32_t> unique_queue_families = { indices.graphics_family.value(), indices.present_family.value() };
 
@@ -424,10 +410,43 @@ void vk_app::create_logical_device()
 		createInfo.enabledLayerCount = 0;
 	}
 
-	if (vkCreateDevice(this->vk_physical_device, &createInfo, nullptr, &this->vk_device) != VK_SUCCESS) {
+	VkDevice device;
+	if (vkCreateDevice(physical_device, &createInfo, nullptr, &device) != VK_SUCCESS) {
 		throw std::runtime_error("Failed to create logical device!");
 	}
 
-	vkGetDeviceQueue(this->vk_device, indices.graphics_family.value(), 0, &this->vk_graphics_queue);
-	vkGetDeviceQueue(this->vk_device, indices.present_family.value(), 0, &this->vk_present_queue);
+	vkGetDeviceQueue(device, indices.graphics_family.value(), 0, graphics_queue);
+	vkGetDeviceQueue(device, indices.present_family.value(), 0, present_queue);
+
+	return device;
+}
+
+void vk_app::vulkan_init()
+{
+	this->vk_instance = create_instance();
+	this->vk_debug_messenger = setup_debug_messenger(this->vk_instance);
+	this->vk_surface = create_surface(this->vk_instance, this->window);
+	this->vk_physical_device = pick_physical_device(this->vk_instance, this->vk_surface);
+	this->vk_device = create_logical_device(
+		this->vk_surface,
+		this->vk_physical_device,
+		&this->vk_graphics_queue,
+		&this->vk_present_queue);
+}
+
+void vk_app::vulkan_deinit()
+{
+	vkDestroyDevice(this->vk_device, nullptr);
+	this->vk_device = nullptr;
+
+	if (ENABLE_VALIDATION_LAYERS) {
+		destroy_debug_utils_messenger_ext(this->vk_instance, this->vk_debug_messenger, nullptr);
+		this->vk_debug_messenger = nullptr;
+	}
+
+	vkDestroySurfaceKHR(this->vk_instance, this->vk_surface, nullptr);
+	this->vk_surface = nullptr;
+
+	vkDestroyInstance(this->vk_instance, nullptr);
+	this->vk_instance = nullptr;
 }
