@@ -292,7 +292,7 @@ void vk_app::create_instance()
 		create_info.pNext = nullptr;
 	}
 
-	if (vkCreateInstance(0, nullptr, &vk_instance) != VK_SUCCESS) {
+	if (vkCreateInstance(&create_info, nullptr, &vk_instance) != VK_SUCCESS) {
 		throw std::runtime_error("Failed to create instance");
 	}
 }
