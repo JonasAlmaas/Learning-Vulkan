@@ -13,6 +13,7 @@
 #include <set>
 #include <vector>
 #include <iostream>
+#include <iomanip>
 #include <optional>
 
 #if _DEBUG
@@ -85,13 +86,45 @@ static std::vector<const char *> get_required_extensions()
 	return extensions;
 }
 
-static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
-	VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
-	VkDebugUtilsMessageTypeFlagsEXT message_type,
-	const VkDebugUtilsMessengerCallbackDataEXT *callback_data,
+static const char *vk_get_debug_severity(VkDebugUtilsMessageSeverityFlagBitsEXT severity)
+{
+	switch (severity) {
+	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT: return "Verbose";
+	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT: return "Info";
+	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: return "Warning";
+	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT: return "Error";
+	default: return "(UNKNOWN SEVERITY)";
+	}
+}
+
+static const char *vk_get_debug_type(VkDebugUtilsMessageTypeFlagsEXT type)
+{
+	switch (type) {
+	case VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT: return "General";
+	case VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT: return "Validation";
+	case VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT: return "Performance";
+	case VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT: return "Device address binding";
+	default: return "(UNKNOWN TYPE)";
+	}
+}
+
+static VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(
+	VkDebugUtilsMessageSeverityFlagBitsEXT severity,
+	VkDebugUtilsMessageTypeFlagsEXT type,
+	const VkDebugUtilsMessengerCallbackDataEXT *data,
 	void *user_data)
 {
-	std::cerr << "Validation layer: " << callback_data->pMessage << '\n';
+	std::cerr << "Debug callback: " << data->pMessage << "\n";
+	std::cerr << "  Severity: " << vk_get_debug_severity(severity) << "\n";
+	std::cerr << "  Severity: " << vk_get_debug_type(type) << "\n";
+	std::cerr << "  Objects ";
+	
+	for (uint32_t i=0u; i<data->objectCount; ++i) {
+		std::cerr << std::hex << std::setw(16) << std::setfill('0') << data->pObjects[i].objectHandle << ' ';
+	}
+	
+	std::cout << std::dec << std::setfill(' ') << '\n';
+
 	return VK_FALSE;
 }
 
@@ -105,7 +138,7 @@ static void populate_debug_messenger_create_info(VkDebugUtilsMessengerCreateInfo
 	create_info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT
 		| VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT
 		| VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-	create_info.pfnUserCallback = debugCallback;
+	create_info.pfnUserCallback = debug_callback;
 }
 
 struct queue_family_indices

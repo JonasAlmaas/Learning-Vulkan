@@ -33,7 +33,6 @@ private:
 
 	uint32_t window_width, window_height;
 	struct GLFWwindow *window = nullptr;
-
 	
 	VkInstance vk_instance = VK_NULL_HANDLE;
 	VkDebugUtilsMessengerEXT vk_debug_messenger = VK_NULL_HANDLE;
