@@ -3,6 +3,7 @@
 #include <vulkan/vulkan_core.h>
 
 #include <stdint.h>
+#include <vector>
 
 struct vk_app
 {
@@ -35,4 +36,7 @@ private:
 	VkDevice vk_device = VK_NULL_HANDLE;
 	VkQueue vk_graphics_queue = VK_NULL_HANDLE;
 	VkQueue vk_present_queue = VK_NULL_HANDLE;
+	VkSwapchainKHR vk_swapchain = VK_NULL_HANDLE;
+	std::vector<VkImage> vk_swapchain_images;
+	std::vector<VkImageView> vk_swapchain_image_views;
 };
