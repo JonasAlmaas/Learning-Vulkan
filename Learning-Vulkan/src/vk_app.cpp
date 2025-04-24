@@ -592,6 +592,21 @@ static VkCommandPool create_cmd_pool(VkDevice device, const queue_family_indices
 	return cmd_pool;
 }
 
+static void create_cmd_bufs(VkDevice device, VkCommandPool pool, std::vector<VkCommandBuffer> &bufs, uint32_t count)
+{
+	VkCommandBufferAllocateInfo alloc_info = {
+		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+		.pNext = nullptr,
+		.commandPool = pool,
+		.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+		.commandBufferCount = count};
+
+	bufs.resize(count);
+	if (vkAllocateCommandBuffers(device, &alloc_info, bufs.data()) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to create command pool");
+	}
+}
+
 void vk_app::vulkan_init()
 {
 	this->vk_instance = create_instance();
@@ -613,10 +628,18 @@ void vk_app::vulkan_init()
 		this->vk_swapchain_images,
 		this->vk_swapchain_image_views);
 	this->vk_cmd_pool = create_cmd_pool(this->vk_device, indices);
+	create_cmd_bufs(
+		this->vk_device,
+		this->vk_cmd_pool,
+		this->vk_cmd_bufs,
+		this->vk_swapchain_images.size());
 }
 
 void vk_app::vulkan_deinit()
 {
+	vkDestroyCommandPool(this->vk_device, this->vk_cmd_pool, nullptr);
+	this->vk_cmd_pool = VK_NULL_HANDLE;
+
 	for (auto &image : this->vk_swapchain_image_views) {
 		vkDestroyImageView(this->vk_device, image, nullptr);
 	}
