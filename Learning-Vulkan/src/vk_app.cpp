@@ -176,10 +176,101 @@ static void begin_cmd_buf(VkCommandBuffer buf, VkCommandBufferUsageFlags flags)
 	}
 }
 
+static VkSemaphore create_semaphore(VkDevice device)
+{
+	VkSemaphoreCreateInfo create_info = {
+		.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = 0};
+
+	VkSemaphore sem;
+	if (vkCreateSemaphore(device, &create_info, nullptr, &sem) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to create semaphore");
+	}
+
+	return sem;
+}
+
+static uint32_t aquire_next_image(VkDevice device, VkSwapchainKHR swapchain, VkSemaphore present_complete_sem)
+{
+	uint32_t image_ix = 0;
+	if (vkAcquireNextImageKHR(
+			device,
+			swapchain,
+			UINT64_MAX,
+			present_complete_sem,
+			nullptr,
+			&image_ix) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to create semaphore");
+	}
+	return image_ix;
+}
+
+static void submit_queue_sync(VkQueue queue, VkCommandBuffer cmd_buf)
+{
+	VkSubmitInfo submit_info = {
+		.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+		.pNext = nullptr,
+		.waitSemaphoreCount = 0,
+		.pWaitSemaphores = VK_NULL_HANDLE,
+		.pWaitDstStageMask = VK_NULL_HANDLE,
+		.commandBufferCount = 1,
+		.pCommandBuffers = &cmd_buf,
+		.signalSemaphoreCount = 0,
+		.pSignalSemaphores = VK_NULL_HANDLE};
+
+	if (vkQueueSubmit(queue, 1, &submit_info, nullptr) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to submit queue");
+	}
+}
+
+static void submit_queue_async(VkQueue queue, VkCommandBuffer cmd_buf, VkSemaphore render_complete_sem, VkSemaphore present_complete_sem)
+{
+	VkPipelineStageFlags wait_flags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	VkSubmitInfo submit_info = {
+		.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+		.pNext = nullptr,
+		.waitSemaphoreCount = 1,
+		.pWaitSemaphores = &present_complete_sem,
+		.pWaitDstStageMask = &wait_flags,
+		.commandBufferCount = 1,
+		.pCommandBuffers = &cmd_buf,
+		.signalSemaphoreCount = 1,
+		.pSignalSemaphores = &render_complete_sem };
+
+	if (vkQueueSubmit(queue, 1, &submit_info, nullptr) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to submit queue");
+	}
+}
+
+static void present_queue(VkQueue queue, VkSwapchainKHR swapchain, uint32_t img_ix, VkSemaphore render_complete_sem)
+{
+	VkPresentInfoKHR present_info = {
+		.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+		.pNext = nullptr,
+		.waitSemaphoreCount = 1,
+		.pWaitSemaphores = &render_complete_sem,
+		.swapchainCount = 1,
+		.pSwapchains = &swapchain,
+		.pImageIndices = &img_ix,
+		.pResults = nullptr};
+
+	if (vkQueuePresentKHR(queue, &present_info) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to present queue");
+	}
+}
+
 void vk_app::loop()
 {
+	VkSemaphore render_complete_sem = create_semaphore(this->vk_device);
+	VkSemaphore present_complete_sem = create_semaphore(this->vk_device);
+
 	while (this->running) {
-		VkClearColorValue clear_color = { 1.0f, 0.0f, 0.0f, 0.0f };
+		uint32_t img_ix = aquire_next_image(this->vk_device, this->vk_swapchain, present_complete_sem);
+		VkCommandBuffer cmd_buf = this->vk_cmd_bufs[img_ix];
+		VkImage img = this->vk_swapchain_images[img_ix];
+
+		VkClearColorValue clear_color = { 1.0f, 0.0f, 1.0f, 0.0f };
 		VkImageSubresourceRange image_range = {
 			.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
 			.baseMipLevel = 0,
@@ -187,19 +278,12 @@ void vk_app::loop()
 			.baseArrayLayer = 0,
 			.layerCount = 1};
 
-		for (size_t i=0; i<this->vk_cmd_bufs.size(); ++i) {
-			begin_cmd_buf(this->vk_cmd_bufs[i], 0);
+		begin_cmd_buf(cmd_buf, 0);
+		vkCmdClearColorImage(cmd_buf, img, VK_IMAGE_LAYOUT_GENERAL, &clear_color, 1, &image_range);
+		vkEndCommandBuffer(cmd_buf);
 
-			vkCmdClearColorImage(
-				this->vk_cmd_bufs[i],
-				this->vk_swapchain_images[i],
-				VK_IMAGE_LAYOUT_GENERAL,
-				&clear_color,
-				1,
-				&image_range);
-
-			vkEndCommandBuffer(this->vk_cmd_bufs[i]);
-		}
+		submit_queue_async(this->vk_graphics_queue, cmd_buf, render_complete_sem, present_complete_sem);
+		present_queue(this->vk_graphics_queue, this->vk_swapchain, img_ix, render_complete_sem);
 
 		glfwPollEvents();
 		
@@ -207,6 +291,9 @@ void vk_app::loop()
 			this->running = false;
 		}
 	}
+
+	vkDestroySemaphore(this->vk_device, render_complete_sem, nullptr);
+	vkDestroySemaphore(this->vk_device, present_complete_sem, nullptr);
 }
 
 void vk_app::window_init()
