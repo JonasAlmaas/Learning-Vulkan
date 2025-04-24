@@ -576,6 +576,22 @@ static VkSwapchainKHR create_swap_chain(
 	return swapchain;
 }
 
+static VkCommandPool create_cmd_pool(VkDevice device, const queue_family_indices &indices)
+{
+	VkCommandPoolCreateInfo create_info = {
+		.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = 0,
+		.queueFamilyIndex = indices.graphics_family.value()};
+
+	VkCommandPool cmd_pool;
+	if (vkCreateCommandPool(device, &create_info, nullptr, &cmd_pool) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to create command pool");
+	}
+
+	return cmd_pool;
+}
+
 void vk_app::vulkan_init()
 {
 	this->vk_instance = create_instance();
@@ -596,6 +612,7 @@ void vk_app::vulkan_init()
 		indices,
 		this->vk_swapchain_images,
 		this->vk_swapchain_image_views);
+	this->vk_cmd_pool = create_cmd_pool(this->vk_device, indices);
 }
 
 void vk_app::vulkan_deinit()
