@@ -646,7 +646,7 @@ void vk_app::vulkan_deinit()
 	this->vk_swapchain_image_views.clear();
 
 	vkDestroySwapchainKHR(this->vk_device, this->vk_swapchain, nullptr);
-	this->vk_device = VK_NULL_HANDLE;
+	this->vk_swapchain = VK_NULL_HANDLE;
 
 	vkDestroyDevice(this->vk_device, nullptr);
 	this->vk_device = VK_NULL_HANDLE;
