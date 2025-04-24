@@ -163,9 +163,44 @@ void vk_app::run()
 	window_deinit();
 }
 
+static void begin_cmd_buf(VkCommandBuffer buf, VkCommandBufferUsageFlags flags)
+{
+	VkCommandBufferBeginInfo cmd_buf_beg_info = {
+		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+		.pNext = nullptr,
+		.flags = flags,
+		.pInheritanceInfo = nullptr };
+
+	if (vkBeginCommandBuffer(buf, &cmd_buf_beg_info) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to begin command buffer");
+	}
+}
+
 void vk_app::loop()
 {
 	while (this->running) {
+		VkClearColorValue clear_color = { 1.0f, 0.0f, 0.0f, 0.0f };
+		VkImageSubresourceRange image_range = {
+			.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+			.baseMipLevel = 0,
+			.levelCount = 1,
+			.baseArrayLayer = 0,
+			.layerCount = 1};
+
+		for (size_t i=0; i<this->vk_cmd_bufs.size(); ++i) {
+			begin_cmd_buf(this->vk_cmd_bufs[i], 0);
+
+			vkCmdClearColorImage(
+				this->vk_cmd_bufs[i],
+				this->vk_swapchain_images[i],
+				VK_IMAGE_LAYOUT_GENERAL,
+				&clear_color,
+				1,
+				&image_range);
+
+			vkEndCommandBuffer(this->vk_cmd_bufs[i]);
+		}
+
 		glfwPollEvents();
 		
 		if (glfwWindowShouldClose(this->window)) {
@@ -581,7 +616,7 @@ static VkCommandPool create_cmd_pool(VkDevice device, const queue_family_indices
 	VkCommandPoolCreateInfo create_info = {
 		.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
 		.pNext = nullptr,
-		.flags = 0,
+		.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
 		.queueFamilyIndex = indices.graphics_family.value()};
 
 	VkCommandPool cmd_pool;
