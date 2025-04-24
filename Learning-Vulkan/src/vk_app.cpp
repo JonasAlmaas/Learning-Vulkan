@@ -442,6 +442,7 @@ static VkImageView create_image_view(
 		.flags = 0,
 		.image = image,
 		.viewType = view_type,
+		.format = format,
 		.components = {
 			.r = VK_COMPONENT_SWIZZLE_IDENTITY,
 			.g = VK_COMPONENT_SWIZZLE_IDENTITY,
@@ -452,7 +453,7 @@ static VkImageView create_image_view(
 			.baseMipLevel = 0,
 			.levelCount = mip_levels,
 			.baseArrayLayer = 0,
-			.layerCount = 0}
+			.layerCount = layer_count}
 	};
 
 	VkImageView view;
@@ -520,6 +521,7 @@ static VkSwapchainKHR create_swap_chain(
 	for (const auto &pm : present_modes) {
 		if (pm == VK_PRESENT_MODE_MAILBOX_KHR) {
 			present_mode = pm;
+			break;
 		}
 	}
 
